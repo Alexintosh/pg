@@ -2,6 +2,7 @@ import React, { Component } from 'react';
 import './App.css';
 import { Metamask, Gas, ContractLoader, Transactions, Events, Scaler, Blockie, Address, Button } from "dapparatus"
 import Web3 from 'web3';
+import GatewayContract from './contracts/UnstoppablePaymentGateway';
 
 class App extends Component {
   constructor(props) {
@@ -13,16 +14,29 @@ class App extends Component {
       doingTransaction: false,
     }
   }
+
+  test = async () => {
+    const contract = new this.state.web3.eth.Contract(GatewayContract.abi, GatewayContract.address);
+    console.log('contract', contract)
+    const res = await contract.methods.ethPool().call()
+    console.log('res', res)
+  }
+
+
+
   handleInput(e){
     let update = {}
     update[e.target.name] = e.target.value
     this.setState(update)
   }
+
   render() {
     let {web3,account,contracts,tx,gwei,block,avgBlockTime,etherscan} = this.state
+    console.log(web3);
     let connectedDisplay = []
     let contractsDisplay = []
     if(web3){
+      
       connectedDisplay.push(
        <Gas
          key="Gas"
@@ -34,21 +48,7 @@ class App extends Component {
          }}
        />
       )
-      /*
-      connectedDisplay.push(
-        <ContractLoader
-         key="ContractLoader"
-         config={{DEBUG:true}}
-         web3={web3}
-         require={path => {return require(`${__dirname}/${path}`)}}
-         onReady={(contracts,customLoader)=>{
-           console.log("contracts loaded",contracts)
-           this.setState({contracts:contracts},async ()=>{
-             console.log("Contracts Are Ready:",this.state.contracts)
-           })
-         }}
-        />
-      )
+
       connectedDisplay.push(
         <Transactions
           key="Transactions"
@@ -69,43 +69,7 @@ class App extends Component {
             console.log("Transaction Receipt",transaction,receipt)
           }}
         />
-      )*/
-      /*
-      if(contracts){
-        contractsDisplay.push(
-          <div key="UI" style={{padding:30}}>
-            <div>
-              <Address
-                {...this.state}
-                address={contracts.YOURCONTRACT._address}
-              />
-            </div>
-            broadcast string: <input
-                style={{verticalAlign:"middle",width:400,margin:6,maxHeight:20,padding:5,border:'2px solid #ccc',borderRadius:5}}
-                type="text" name="broadcastText" value={this.state.broadcastText} onChange={this.handleInput.bind(this)}
-            />
-            <Button color={this.state.doingTransaction?"orange":"green"} size="2" onClick={()=>{
-                this.setState({doingTransaction:true})
-                //tx(contracts.YOURCONTRACT.YOURFUNCTION(YOURARGUMENTS),(receipt)=>{
-                //  this.setState({doingTransaction:false})
-                //})
-              }}>
-              Send
-            </Button>
-            <Events
-              config={{hide:false}}
-              contract={contracts.YOURCONTRACT}
-              eventName={"YOUREVENT"}
-              block={block}
-              onUpdate={(eventData,allEvents)=>{
-                console.log("EVENT DATA:",eventData)
-                this.setState({events:allEvents})
-              }}
-            />
-          </div>
-        )
-      }
-      */
+      )
     }
     return (
       <div className="App">
@@ -116,6 +80,7 @@ class App extends Component {
            if(state.web3Provider) {
              state.web3 = new Web3(state.web3Provider)
              this.setState(state)
+             setTimeout(this.test, 200);
            }
           }}
         />
