@@ -111,6 +111,7 @@ interface ERC20Interface {
 
 contract StupidExchange is Ownable {
     using SafeMath for uint256;
+    address public owner;
 
     /// EVENTS
     event EthToTokenPurchase(address indexed buyer, uint256 indexed ethIn, uint256 indexed tokensOut);
@@ -135,6 +136,7 @@ contract StupidExchange is Ownable {
 
     /// CONSTRUCTOR
     constructor (address _tokenAddress) public {
+        owner = msg.sender;
         tokenAddress = _tokenAddress;
         token = ERC20Interface(tokenAddress);
     }
@@ -142,7 +144,7 @@ contract StupidExchange is Ownable {
     /// FALLBACK FUNCTION
     function() public payable {
         require(msg.value != 0);
-        ethToToken(msg.sender, msg.sender, msg.value, 1);
+        ethToToken(msg.sender, msg.sender, msg.value);
     }
 
     /// EXTERNAL FUNCTIONS
@@ -159,6 +161,12 @@ contract StupidExchange is Ownable {
         selfdestruct(msg.sender);
     }
     
+    function withdraw() public onlyOwner returns (bool success) {
+        require(address(this).balance > 0);
+        owner.transfer(address(this).balance);
+        return true;
+    }
+    
     function withdrawTokens() public onlyOwner returns (bool success) {
         uint256 balance = token.balanceOf(this);
 
@@ -170,13 +178,13 @@ contract StupidExchange is Ownable {
 
     // Buyer swaps ETH for Tokens
     function ethToTokenSwap(
-        uint256 _minTokens,
-        uint256 _timeout
+        uint256 _minTokens
+        // uint256 _timeout
     )
         external
         payable
     {
-        require(msg.value > 0 && _minTokens > 0 && now < _timeout);
+        require(msg.value > 0 && _minTokens > 0);
         ethToToken(msg.sender, msg.sender, msg.value,  _minTokens);
     }
 

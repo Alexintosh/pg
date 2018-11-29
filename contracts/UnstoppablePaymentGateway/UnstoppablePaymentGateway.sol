@@ -103,7 +103,6 @@ contract GlobalVar {
 
 contract UnstoppablePaymentGateway is GlobalVar, Ownable{
     
-    
     struct PaymentObj {
       address _payer; 
       address seller;
