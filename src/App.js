@@ -15,7 +15,7 @@ const GlobalVar = {
 };
 
 const paymentRequest = {
-  id: 3,
+  id: 4,
   seller: '0xd18a54f89603fe4301b29ef6a8ab11b9ba24f139',
   usdValue: "5",
   tokenValue: "0.1",
@@ -106,8 +106,8 @@ class App extends Component {
         console.log('ProofOfPayment', event);
 
         const seller = event.returnValues[1];
-        const goValue = web3.utils.fromWei(event.returnValues[3], 'ether');
-        toast.success(`You paid ${seller} ${goValue} Go!`, {position: toast.POSITION.BOTTOM_CENTER });
+        const amount = web3.utils.fromWei(event.returnValues[3], 'ether');
+        toast.success(`You paid ${amount} Go!`, {position: toast.POSITION.BOTTOM_CENTER });
       })
       .on('error', function(error){
         console.log('ERROR', error);
@@ -123,6 +123,7 @@ class App extends Component {
 
 
     this.getAllowance();
+    this.checkGoPrice();
     
 
     /**
@@ -158,6 +159,11 @@ class App extends Component {
     }
   }
 
+  checkGoPrice = async () => {
+    fetch(`https://api.coinmarketcap.com/v1/ticker/gochain/?convert=USD`)
+      .then(res => console.log(res) )
+  }
+
   genQRcode() {
     const url =  build({
       scheme: 'ethereum',
@@ -180,12 +186,6 @@ class App extends Component {
         img: baseImgUrl
       }
     })
-  }
-
-  handleInput(e){
-    let update = {}
-    update[e.target.name] = e.target.value
-    this.setState(update)
   }
 
   exchangeGo() {
@@ -211,7 +211,7 @@ class App extends Component {
   }
 
   checkOrderAlreadyPaid = async (order) => {
-    return this.state.contracts
+    const payedWithGo = await this.state.contracts
       .gateway
       .methods
       .isOrderPaid(
@@ -220,6 +220,20 @@ class App extends Component {
         this.state.web3.utils.toWei(order.tokenValue, 'ether'),
         order.token
       ).call()
+    
+    const payedWithToken = await this.state.contracts
+      .gateway
+      .methods
+      .isOrderPaid(
+        order.seller,
+        order.id,
+        this.state.web3.utils.toWei(order.usdValue, 'ether'),
+        GlobalVar.USDGtoken
+      ).call()
+
+    console.log('payedWithGo', payedWithGo)
+    console.log('payedWithToken', payedWithToken)
+    return payedWithGo || payedWithToken
   }
 
   payWithGo(order) {
@@ -234,6 +248,33 @@ class App extends Component {
         this.state.web3.utils.toWei(order.tokenValue, 'ether').toString()
       )
       .send({from:this.state.account, value: this.state.web3.utils.toWei(order.tokenValue, 'ether')})
+        .on('transactionHash', function(hash){
+          console.log('transactionHash', hash)
+          sentToast();
+          check(hash);
+        })
+        .on('receipt', function(receipt){
+          //console.log('receipt', receipt)
+        })
+        .on('confirmation', function(confirmationNumber, receipt){
+            //console.log('confirmationNumber', confirmationNumber, receipt)
+        })
+        .on('error', console.error);
+  }
+
+  payWithToken(order) {
+    const check = this.checkTx;
+    console.log('order', order)
+    this.state.contracts
+      .gateway
+      .methods
+      .payWithToken(
+        order.seller,
+        order.id,
+        this.state.web3.utils.toWei(order.usdValue, 'ether').toString(),
+        GlobalVar.USDGtoken
+      )
+      .send({from:this.state.account})
         .on('transactionHash', function(hash){
           console.log('transactionHash', hash)
           sentToast();
@@ -281,36 +322,48 @@ class App extends Component {
     console.log('allowanceGateway', allowanceGateway, this.state.order);
 
     this.setState({
-      allowanceUSDGtoGateway: allowanceGateway.toString()
+      allowanceUSDGtoGateway: this.state.web3.utils.fromWei(allowanceGateway, 'ether')
     })
   }
 
   requestAllowance = async () => {
-    await this.state.contracts
+    const cb = this.getAllowance;
+    this.state.contracts
             .usdg
             .methods
-            .approve(Gateway.address, this.state.web3.utils.toWei(this.state.order.tokenValue, 'ether'))
+            .approve(Gateway.address, this.state.web3.utils.toWei(this.state.order.usdValue, 'ether'))
+            .send({from:this.state.account})
+            .on('receipt', function(receipt){
+              console.log('receipt', receipt)
+              cb();
+            })
     
-    await this.getAllowance();
   }
 
   renderPayUI() {
     let { order, tx, contracts, web3, allowanceUSDGtoGateway } = this.state;
+    const allowanceNeeded = web3.utils.toWei(allowanceUSDGtoGateway) < web3.utils.toWei(order.usdValue);
     return(
       <div>
           <Button color={"green"} size={"2"} onClick={()=>{ this.payWithGo(order); }}>
             Pay order number: {paymentRequest.id} - {order.tokenValue} GO
           </Button>
 
-          <Button color={"grey"} disabled={true} size={"2"} onClick={()=>{ this.requestAllowance() }}>
-            Approve {order.tokenValue} USDG to Gateway
-          </Button>
+          { allowanceNeeded ?
+            <Button color={"green"} disabled={true} size={"2"} onClick={()=>{ this.requestAllowance() }}>
+              Approve {order.usdValue} USDG to Gateway
+            </Button>
+          :
+            <Button color={"green"} size={"2"} onClick={()=>{ this.payWithToken(order); }}>
+              Pay order number: {paymentRequest.id} - {order.usdValue} USDG
+            </Button>
+          }
 
           { 
-            web3.utils.toWei(allowanceUSDGtoGateway) < web3.utils.toWei(order.usdValue) ?
+            allowanceNeeded ?
               <h3>First Approve to pay with token, currently {this.state.allowanceUSDGtoGateway}</h3>
             :
-            <h3>allowance {this.state.allowanceUSDGtoGateway}</h3>
+            <h3>Allowance {this.state.allowanceUSDGtoGateway}</h3>
           }
 
           { order.img ? <img src={order.img} /> : null}

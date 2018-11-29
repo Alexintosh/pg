@@ -103,28 +103,58 @@ contract GlobalVar {
 
 contract UnstoppablePaymentGateway is GlobalVar, Ownable{
     
+    
     struct PaymentObj {
       address _payer; 
       address seller;
       address _token;
       uint _amount; 
       bytes32 _data;
+      bool isPaid;
     }
     
     event ProofOfPayment(address indexed _payer, address indexed seller, address _token, uint _amount, bytes32 _data);
     
     mapping(address => mapping(uint => PaymentObj)) public payment;
     
-    function payWithGO(address seller, uint _orderId) internal returns  (bool success){
+    /**
+    * Amount is included in the check since there is a chance that people 
+    * will pay with less money then expected.
+    * 
+    */
+    function isOrderPaid(address _sellerAddress, uint _orderId, uint256 amount, address token) public constant returns(bool success){
+      return payment[_sellerAddress][_orderId].isPaid && 
+             payment[_sellerAddress][_orderId]._amount == amount &&
+             payment[_sellerAddress][_orderId]._token == token;
+    } 
+    
+    function payWithGO(address seller, uint _orderId, uint256 amount) public payable returns  (bool success){
       require(seller != address(0)); 
-      require(msg.value > 0);
+      require(msg.value > 0 && msg.value == amount);
       
       seller.transfer(msg.value);
       
       bytes32 data = keccak256(abi.encodePacked( seller,_orderId ) );
           
-      payment[seller][_orderId] = PaymentObj(msg.sender, seller, GOToken, msg.value, data);
-      emit ProofOfPayment(msg.sender, seller, GOToken, msg.value, data);
+      payment[seller][_orderId] = PaymentObj(msg.sender, seller, GOToken, amount, data, true);
+      emit ProofOfPayment(msg.sender, seller, GOToken, amount, data);
+      return true;
+    }
+    
+    function payWithToken(address seller, uint _orderId, uint256 amount, address token) public payable returns  (bool success){
+      require(seller != address(0)); 
+      require(token != address(0));
+      
+      IERC20 tokenInstance = IERC20(token);
+      
+      //Do we have allowance?
+      require(tokenInstance.allowance(msg.sender, address(this)) >= amount);
+      require(tokenInstance.transferFrom(msg.sender, seller, amount));
+      
+      bytes32 data = keccak256(abi.encodePacked( seller,_orderId ) );
+          
+      payment[seller][_orderId] = PaymentObj(msg.sender, seller, token, amount, data, true);
+      emit ProofOfPayment(msg.sender, seller, token, amount, data);
       return true;
     }
     
