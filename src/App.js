@@ -269,7 +269,7 @@ class App extends Component {
     this.state.contracts
       .gateway
       .methods
-      .payWithGO(
+      .payWithGoReceiveToken(
         order.seller,
         order.id,
         this.state.web3.utils.toWei(order.tokenValue, 'ether').toString()

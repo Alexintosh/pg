@@ -144,7 +144,7 @@ contract StupidExchange is Ownable {
     /// FALLBACK FUNCTION
     function() public payable {
         require(msg.value != 0);
-        ethToToken(msg.sender, msg.sender, msg.value);
+        ethToToken(msg.sender, msg.sender, msg.value, 1);
     }
 
     /// EXTERNAL FUNCTIONS
@@ -176,16 +176,23 @@ contract StupidExchange is Ownable {
         return true;
     }
 
-    // Buyer swaps ETH for Tokens
+    // Swaps ETH for Tokens and deliver it to the recepient
     function ethToTokenSwap(
-        uint256 _minTokens
-        // uint256 _timeout
+        uint256 _minTokens,
+        address recepient
     )
         external
         payable
     {
         require(msg.value > 0 && _minTokens > 0);
-        ethToToken(msg.sender, msg.sender, msg.value,  _minTokens);
+        
+        address deliverTo;
+        if( recepient == address(0) ) {
+            deliverTo = msg.sender;
+        } else {
+            deliverTo = recepient;
+        }
+        ethToToken(msg.sender, deliverTo, msg.value,  _minTokens);
     }
 
 
@@ -193,12 +200,20 @@ contract StupidExchange is Ownable {
     function tokenToEthSwap(
         uint256 _tokenAmount,
         uint256 _minEth,
-        uint256 _timeout
+        address recepient
     )
         external
     {
-        require(_tokenAmount > 0 && _minEth > 0 && now < _timeout);
-        tokenToEth(msg.sender, msg.sender, _tokenAmount, _minEth);
+        require(_tokenAmount > 0 && _minEth > 0);
+        
+        address deliverTo;
+        if( recepient == address(0) ) {
+            deliverTo = msg.sender;
+        } else {
+            deliverTo = recepient;
+        }
+        
+        tokenToEth(msg.sender, deliverTo, _tokenAmount, _minEth);
     }
 
     /// INTERNAL FUNCTIONS

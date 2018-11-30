@@ -94,14 +94,19 @@ contract GlobalVar {
     /**
     * Address Exchanges
     */
-    address public StupidExchange = 0xb6f448e57c4b01ea88fa04a92b7696871bf12c61;
+    address public StupidExchange = 0x147b362f023a3280841462aae95d274f8890bdf0;
     
     address public GOToken = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     address public Pizzatoken = 0x3553a51d08db0565fe4bf8cd4dd554f9f24a65bc;
     address public USDGtoken = 0xd1574837a02ba934be92adbde12a62a658cd3186;
 }
 
+interface IStupidEx {
+    function ethToTokenSwap( uint256 _minTokens, address recepient) external payable;
+}
+
 contract UnstoppablePaymentGateway is GlobalVar, Ownable{
+    IStupidEx private mainEx;
     
     
     struct PaymentObj {
@@ -117,6 +122,10 @@ contract UnstoppablePaymentGateway is GlobalVar, Ownable{
     
     mapping(address => mapping(uint => PaymentObj)) public payment;
     
+    constructor() public {
+        mainEx = IStupidEx(StupidExchange);
+    }
+    
     /**
     * Amount is included in the check since there is a chance that people 
     * will pay with less money then expected.
@@ -126,7 +135,20 @@ contract UnstoppablePaymentGateway is GlobalVar, Ownable{
       return payment[_sellerAddress][_orderId].isPaid && 
              payment[_sellerAddress][_orderId]._amount == amount &&
              payment[_sellerAddress][_orderId]._token == token;
-    } 
+    }
+    
+    function payWithGoReceiveToken(address seller, uint _orderId, uint256 amount) public payable returns  (bool success){
+      require(seller != address(0)); 
+      require(msg.value > 0 && msg.value == amount);
+      
+      mainEx.ethToTokenSwap.value(msg.value)(10, seller);
+      
+      bytes32 data = keccak256(abi.encodePacked( seller,_orderId ) );
+          
+      payment[seller][_orderId] = PaymentObj(msg.sender, seller, GOToken, amount, data, true);
+      emit ProofOfPayment(msg.sender, seller, GOToken, amount, data);
+      return true;
+    }
     
     function payWithGO(address seller, uint _orderId, uint256 amount) public payable returns  (bool success){
       require(seller != address(0)); 
