@@ -3,6 +3,7 @@
     "version": "0.0.1",
     "private": true,
     "dependencies": {
+        "bloomer": "^0.6.5",
         "clevis": "0.0.61",
         "dapparatus": "^1.0.20",
         "eth-url-parser": "^1.0.2",

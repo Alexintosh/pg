@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 import './App.css';
-import {Dapparatus, Metamask, Gas, ContractLoader, Transactions, Events, Scaler, Blockie, Address, Button } from "dapparatus"
+import {Dapparatus, Metamask, Gas, ContractLoader, Transactions, Events, Scaler, Blockie, Address } from "dapparatus"
 import Web3 from 'web3';
 import Exchange from './contracts/Exchange';
 import USDG from './contracts/ERC20';
@@ -9,6 +9,8 @@ import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { parse, build } from 'eth-url-parser';
 import queryString from 'query-string';
+import { Container, Column, Panel, Button, PanelBlock, PanelHeading, Icon, PanelTab, Checkbox, PanelTabs, PanelIcon, Notification, Tag,
+Media, MediaLeft, Image, Content, MediaContent } from 'bloomer';
 
 const rand = (min=1 , max=999999999) => {
   let random_number = Math.random() * (max-min) + min;
@@ -65,21 +67,15 @@ class App extends Component {
     const params = queryString.parse(window.location.search);
     const orderId = parseInt(params.orderId) || rand();
 
-    console.log("order", {
-      ...this.state.order,
-      id: orderId,
-      shopName: params.shopname || false,
-      itemName: params.itemname || false,
-      priceGo: params.pricego || false,
-    })
-
     this.setState({
       order: {
         ...this.state.order,
         id: orderId,
         shopName: params.shopname || false,
         itemName: params.itemname || false,
-        priceGo: params.pricego || false,
+        tokenValue: params.pricego || paymentRequest.tokenValue,
+        usdValue: params.usd || paymentRequest.usdValue,
+        img: params.img || false,
       }
     })
     
@@ -225,7 +221,7 @@ class App extends Component {
       loading: false,
       order: {
         ...this.state.order,
-        img: baseImgUrl
+        qrCode: baseImgUrl
       }
     })
   }
@@ -386,39 +382,30 @@ class App extends Component {
     const allowanceNeeded = web3.utils.toWei(allowanceUSDGtoGateway) < web3.utils.toWei(order.usdValue);
     return(
       <div>
-          <h1>Order id: {order.id}</h1>
           {
             this.state.metaAccount ?
-              <div>
+              <PanelBlock>
                   <h3>Use your phone or install metamask.</h3>
-              </div>
+              </PanelBlock>
             :
-              <div>
-                <Button color={"green"} size={"2"} onClick={()=>{ this.payWithGo(order); }}>
-                  Pay {order.tokenValue} GO
-                </Button>
+              <PanelBlock style={{ padding: "0px"}}>
+                <Column isSize="1/2" onClick={()=>{ this.payWithGo(order); }} style={{ borderRight: "1px", cursor: "pointer", backgroundColor: "#5167FF", color: "#fff"}}>
+                  PAY {order.tokenValue}GO
+                </Column>
 
                 { allowanceNeeded ?
-                  <Button color={"green"} disabled={true} size={"2"} onClick={()=>{ this.requestAllowance() }}>
-                    Approve {order.usdValue} USDG to Gateway
-                  </Button>
-                :
-                  <Button color={"green"} size={"2"} onClick={()=>{ this.payWithToken(order); }}>
-                    Pay {order.usdValue} USDG
-                  </Button>
+                  <Column isSize="1/2" onClick={()=>{ this.requestAllowance() }} style={{ borderRight: "1px", cursor: "pointer", backgroundColor: "#1BCDFF", color: "#fff"}}>
+                    <Icon isSize="small" className="fa fa-lock" /> {order.usdValue} USDG
+                  </Column>
+                  :
+                  <Column isSize="1/2" onClick={()=>{ this.payWithToken(order) }} style={{ borderRight: "1px", cursor: "pointer", backgroundColor: "#1BCDFF", color: "#fff"}}>
+                    PAY {order.usdValue} USDG
+                  </Column>
                 }
 
-                { 
-                  allowanceNeeded ?
-                    <h3>First Approve to pay with token 👆👆👆👆👆👆</h3>
-                  :
-                  <h3>Allowance {this.state.allowanceUSDGtoGateway}</h3>
-                }      
-              </div>
+                      
+              </PanelBlock>
           }
-          
-
-          { order.img ? <img src={order.img} /> : null}
       </div>
     )
   }
@@ -466,7 +453,44 @@ class App extends Component {
     }
     return (
       <div className="App">
-        <Dapparatus
+      <Container style={{margin: '20px auto'}}>
+      <ToastContainer />
+      <div isSize="12" isCentered className="columns is-centered">
+      <Column isSize={{mobile: 12, desktop:"1/3"}} isOffset={1} className="has-text-centered">
+        <Panel>
+          <PanelHeading>Unipay 🦄</PanelHeading>
+          { loading ? <h3>Loading...</h3> : this.renderPayUI() }
+          <PanelBlock>            
+            <Media>
+                <MediaLeft>
+                    <Image isSize='64x64' src={order.img} />
+                </MediaLeft>
+                <MediaContent>
+                    <Content>
+                        <p>
+                            <strong>{order.itemName}</strong> <small>@{order.shopName}</small> <small>#{order.id}</small>
+                            <br />
+                            {order.tokenValue}GO / {order.usdValue}$  <Tag isColor='warning'>TESTNET</Tag>
+                        </p>
+                    </Content>
+                </MediaContent>
+            </Media>
+          </PanelBlock>
+          <PanelBlock >
+            <Column isSize={12} className="has-text-centered">
+              { order.qrCode ? <img src={order.qrCode} /> : null}
+            </Column>
+          </PanelBlock>
+          <PanelBlock >
+            <Column isSize={12} className="has-text-centered">
+              <Button isColor='info' isSize="large">open in wallet</Button>
+            </Column>
+          </PanelBlock>
+      </Panel>
+      </Column>
+      </div>        
+      <Column>
+      <Dapparatus
           config={{requiredNetwork:['Unknown','Rinkeby', 'GO (testnet)'], DEBUG:false, hide:this.state.toggleAccountView}}
           fallbackWeb3Provider={new Web3.providers.HttpProvider('https://testnet-rpc.gochain.io')}
           onUpdate={(state)=>{
@@ -474,7 +498,7 @@ class App extends Component {
            if(state.web3Provider) {
              state.web3 = new Web3(state.web3Provider)
              state.network = 'GO (testnet)'
-             state.toggleAccountView = state.metaAccount ? true : false;
+             state.toggleAccountView = state.metaAccount ? true : true;
              if( !this.state.web3 ) {
               setTimeout(this.init, 200);
              } 
@@ -482,25 +506,10 @@ class App extends Component {
            }
           }}
         />
-        {connectedDisplay}
-
-        { loading ? <h3>Loading...</h3> :
-          <div>
-           { order.isPaid ? <h3>Order {order.id} paid</h3> : <div> {this.renderPayUI()} </div> }
-
-           { this.state.toggleExchangeView ? this.renderExchangeUI() : null }
-
-            <Button color={"blue"} size={"1"} onClick={()=>{ this.setState({ toggleAccountView: !this.state.toggleAccountView}) }}>
-              Toggle Account
-            </Button>
-            <Button color={"blue"} size={"1"} onClick={()=>{ this.setState({ toggleAccountView: !this.state.toggleExchangeView}) }}>
-              Toggle Exchange
-            </Button>
-          </div>
-        }
-
-        <ToastContainer />
-      </div>
+      </Column>
+        {/*connectedDisplay*/}
+      </Container>
+    </div>
     );
   }
 }
