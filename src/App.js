@@ -5,11 +5,13 @@ import Web3 from 'web3';
 import Exchange from './contracts/Exchange';
 import USDG from './contracts/ERC20';
 import Gateway from './contracts/UnstoppablePaymentGateway';
+import MetaBatchProxy from './contracts/MetaBatchProxy';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { parse, build } from 'eth-url-parser';
 import uuid from 'uuid/v4';
 import queryString from 'query-string';
+const ethers = window.ethers;
 
 const rand = (min=1 , max=999999999) => {
   let random_number = Math.random() * (max-min) + min;
@@ -30,8 +32,6 @@ const paymentRequest = {
   isPaid: false,
   paymentTx: null,
 }
-
-
 
 const sentToast = () => toast.info("Transaction sent!", {position: toast.POSITION.BOTTOM_CENTER });
 
@@ -73,6 +73,7 @@ class App extends Component {
     const exchange = new this.state.web3.eth.Contract(Exchange.abi, Exchange.address);
     const usdg = new this.state.web3.eth.Contract(USDG.abi, USDG.address);
     const gateway = new this.state.web3.eth.Contract(Gateway.abi, Gateway.address);
+    const atomicProxy = new this.state.web3.eth.Contract(MetaBatchProxy.abi, MetaBatchProxy.address);
   
     /**
      * Setup Exchange Events Listeners
@@ -145,7 +146,8 @@ class App extends Component {
       contracts: {
         exchange,
         usdg,
-        gateway
+        gateway,
+        atomicProxy
       }
     })
 
@@ -172,9 +174,104 @@ class App extends Component {
       this.genQRcode();
     }
 
+
     toast.info("Dapp Initialized!", {
       position: toast.POSITION.BOTTOM_CENTER
     });
+  }
+
+  toWei(val, toWhat='ether') {
+    return this.state.web3.utils.toWei(val, toWhat).toString();
+  }
+
+  batchTx = async () => {
+    const check = this.checkTx;
+    /**
+     * Approving Tx for USDG token
+     */
+    console.log('batchTx', this.state.contracts);
+    const approveData = this.state.contracts.usdg.methods.approve(Gateway.address, this.toWei(this.state.order.usdValue) ).encodeABI();
+    console.log('approveData', approveData);
+    const approveHash = ethers.utils.solidityKeccak256(['address', 'uint256', 'bytes'], [GlobalVar.USDGtoken, 0, ethers.utils.arrayify(approveData)]);
+    console.log('approveHash', approveHash);
+    //Signing with metamask
+
+
+    const approveDataSignature = await this.state.web3.eth.sign(approveHash, this.state.account);
+    console.log('approveDataSignature', approveDataSignature);
+
+
+    /**
+     * Approving Tx for USDG token
+     */
+    const { order } = this.state;
+    console.log("toWei(order.usdValue)", this.toWei(order.usdValue), order);
+    const payData = this.state.contracts.gateway.methods.payWithToken(order.seller, order.id, this.toWei(order.usdValue), GlobalVar.USDGtoken ).encodeABI();
+    console.log('payData', payData);
+
+    const payHash = ethers.utils.solidityKeccak256(['address', 'uint256', 'bytes'], [Gateway.address, 0, ethers.utils.arrayify(payData)]);
+    console.log('payHash', payHash);
+
+    //Signing with metamask
+    const payDataSignature = await this.state.web3.eth.sign(payHash, this.state.account);
+    console.log('payDataSignature', payDataSignature);
+
+    console.log(
+        [GlobalVar.USDGtoken, Gateway.address], //Array of contracts
+        [0,0], //Array of value
+        [approveData, payData], //Array data
+        [approveDataSignature, payDataSignature], //Array data
+    )
+
+    return;
+
+    this.state.contracts
+      .atomicProxy
+      .methods
+      .execute(
+        [GlobalVar.USDGtoken, Gateway.address], //Array of contracts
+        [0,0], //Array of value
+        [approveData, payData], //Array data
+        [approveDataSignature, payDataSignature], //Array data
+      )
+      .send({from:this.state.account, gasLimit: 4700000})
+        .on('transactionHash', function(hash){
+          console.log('transactionHash', hash)
+          sentToast();
+          check(hash);
+        })
+        .on('receipt', function(receipt){
+          //console.log('receipt', receipt)
+        })
+        .on('confirmation', function(confirmationNumber, receipt){
+            //console.log('confirmationNumber', confirmationNumber, receipt)
+        })
+        .on('error', console.error);
+
+    // const succesfulExecute = await MetaBatchContract.contract.execute([MetaTokenContract.contractAddress, BillboardContract.contractAddress], [0, 0], [approveData, buySloganData], [approveDataSignature, buySloganDataSignature], {
+    //   gasLimit: 4700000,
+    //   gasPrice: utils.bigNumberify("20000000000")
+    // });
+
+    // const hashData = ethers.utils.arrayify(approveHash);
+    // console.log('hashData', hashData);
+
+
+    // --------------------------------------------------------------------------------
+
+    // approveData = MetaTokenContract.contract.interface.functions.approve.encode([BillboardContract.contractAddress, 100]);
+
+    // const approveHash = utils.solidityKeccak256(['address', 'uint256', 'bytes'], [MetaTokenContract.contractAddress, 0, utils.arrayify(approveData)]);
+    
+    // approveDataSignature = await wallet.signMessage(hashData);
+
+    // // Generate buy meta transaction
+    // buySloganData = BillboardContract.contract.interface.functions.buy.encode(['Ogi Maistora', 100]);
+
+    // const buySloganHash = utils.solidityKeccak256(['address', 'uint256', 'bytes'], [BillboardContract.contractAddress, 0, utils.arrayify(buySloganData)]);
+    // const hashData2 = ethers.utils.arrayify(buySloganHash);
+    // buySloganDataSignature = await wallet.signMessage(hashData2);
+
   }
 
   checkTx = async (tx) => {
@@ -386,6 +483,11 @@ class App extends Component {
               Pay {order.usdValue} USDG
             </Button>
           }
+
+          <br/>
+          <Button color={"red"} size={"2"} onClick={()=>{ this.batchTx(); }}>
+              Use Experimental Atomic Batched Transactions
+          </Button>
 
           { 
             allowanceNeeded ?
