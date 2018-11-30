@@ -9,8 +9,9 @@ Idea Summary:  Blockchain software solution which enables Merchants to accept pa
 Feature of UnstoppablePaymentGateway:
 - [x] Removes the need of centralized architecture to keep track of payments
 - [x] Enables payments in GO and ERC20 tokens
-- [ ] Instants decentralized exchange of GO to a (fake) stablecoin.
+- [x] Instants decentralized exchange of GO to a (fake) stablecoin.
 - [x] Implements proof of payment EIP
-- [ ] Inject a web3-provider-engine to avoid metamask dependency
+- [x] Inject a web3-provider-engine to avoid metamask dependency
+- [ ] Decent UI
 
 Current Team Count: Alexintosh

@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 import './App.css';
-import { Metamask, Gas, ContractLoader, Transactions, Events, Scaler, Blockie, Address, Button } from "dapparatus"
+import {Dapparatus, Metamask, Gas, ContractLoader, Transactions, Events, Scaler, Blockie, Address, Button } from "dapparatus"
 import Web3 from 'web3';
 import Exchange from './contracts/Exchange';
 import USDG from './contracts/ERC20';
@@ -8,7 +8,6 @@ import Gateway from './contracts/UnstoppablePaymentGateway';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { parse, build } from 'eth-url-parser';
-import uuid from 'uuid/v4';
 import queryString from 'query-string';
 
 const rand = (min=1 , max=999999999) => {
@@ -43,6 +42,8 @@ class App extends Component {
       account: false,
       gwei: 4,
       doingTransaction: false,
+      toggleAccountView: false,
+      toggleExchangeView: false,
       network: "Go",
       loading: true,
       order: {
@@ -373,26 +374,36 @@ class App extends Component {
     return(
       <div>
           <h1>Order id: {order.id}</h1>
-          <Button color={"green"} size={"2"} onClick={()=>{ this.payWithGo(order); }}>
-            Pay {order.tokenValue} GO
-          </Button>
-
-          { allowanceNeeded ?
-            <Button color={"green"} disabled={true} size={"2"} onClick={()=>{ this.requestAllowance() }}>
-              Approve {order.usdValue} USDG to Gateway
-            </Button>
-          :
-            <Button color={"green"} size={"2"} onClick={()=>{ this.payWithToken(order); }}>
-              Pay {order.usdValue} USDG
-            </Button>
-          }
-
-          { 
-            allowanceNeeded ?
-              <h3>First Approve to pay with token 👆👆👆👆👆👆</h3>
+          {
+            this.state.metaAccount ?
+              <div>
+                  <h3>Use your phone or install metamask.</h3>
+              </div>
             :
-            <h3>Allowance {this.state.allowanceUSDGtoGateway}</h3>
+              <div>
+                <Button color={"green"} size={"2"} onClick={()=>{ this.payWithGo(order); }}>
+                  Pay {order.tokenValue} GO
+                </Button>
+
+                { allowanceNeeded ?
+                  <Button color={"green"} disabled={true} size={"2"} onClick={()=>{ this.requestAllowance() }}>
+                    Approve {order.usdValue} USDG to Gateway
+                  </Button>
+                :
+                  <Button color={"green"} size={"2"} onClick={()=>{ this.payWithToken(order); }}>
+                    Pay {order.usdValue} USDG
+                  </Button>
+                }
+
+                { 
+                  allowanceNeeded ?
+                    <h3>First Approve to pay with token 👆👆👆👆👆👆</h3>
+                  :
+                  <h3>Allowance {this.state.allowanceUSDGtoGateway}</h3>
+                }      
+              </div>
           }
+          
 
           { order.img ? <img src={order.img} /> : null}
       </div>
@@ -414,9 +425,10 @@ class App extends Component {
   }
 
   render() {
-    let {web3, account, gwei, block, loading, etherscan, order} = this.state
+    let {web3, account, gwei, block, loading, etherscan, order, metaAccount} = this.state
+    console.log('this.state', this.state)
     let connectedDisplay = []
-    if(web3){
+    if(web3 && !metaAccount){
 
       connectedDisplay.push(
         <Transactions
@@ -441,14 +453,17 @@ class App extends Component {
     }
     return (
       <div className="App">
-        <Metamask
-          config={{requiredNetwork:['Unknown','Rinkeby']}}
+        <Dapparatus
+          config={{requiredNetwork:['Unknown','Rinkeby', 'GO (testnet)'], DEBUG:false, hide:this.state.toggleAccountView}}
+          fallbackWeb3Provider={new Web3.providers.HttpProvider('https://testnet-rpc.gochain.io')}
           onUpdate={(state)=>{
            //console.log("metamask state update:",state)
            if(state.web3Provider) {
              state.web3 = new Web3(state.web3Provider)
+             state.network = 'GO (testnet)'
+             state.toggleAccountView = state.metaAccount ? true : false;
              if( !this.state.web3 ) {
-                setTimeout(this.init, 200);
+              setTimeout(this.init, 200);
              } 
              this.setState(state)
            }
@@ -458,7 +473,16 @@ class App extends Component {
 
         { loading ? <h3>Loading...</h3> :
           <div>
-           { order.isPaid ? <h3>Order {order.id} paid</h3> : <div> {this.renderPayUI()}  {this.renderExchangeUI()} </div> }
+           { order.isPaid ? <h3>Order {order.id} paid</h3> : <div> {this.renderPayUI()} </div> }
+
+           { this.state.toggleExchangeView ? this.renderExchangeUI() : null }
+
+            <Button color={"blue"} size={"1"} onClick={()=>{ this.setState({ toggleAccountView: !this.state.toggleAccountView}) }}>
+              Toggle Account
+            </Button>
+            <Button color={"blue"} size={"1"} onClick={()=>{ this.setState({ toggleAccountView: !this.state.toggleExchangeView}) }}>
+              Toggle Exchange
+            </Button>
           </div>
         }
 
