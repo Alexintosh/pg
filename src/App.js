@@ -8,6 +8,13 @@ import Gateway from './contracts/UnstoppablePaymentGateway';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { parse, build } from 'eth-url-parser';
+import uuid from 'uuid/v4';
+import queryString from 'query-string';
+
+const rand = (min=1 , max=999999999) => {
+  let random_number = Math.random() * (max-min) + min;
+  return Math.floor(random_number);
+};
 
 const GlobalVar = {
   GOToken: "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
@@ -15,7 +22,7 @@ const GlobalVar = {
 };
 
 const paymentRequest = {
-  id: 4,
+  id: rand(),
   seller: '0xd18a54f89603fe4301b29ef6a8ab11b9ba24f139',
   usdValue: "5",
   tokenValue: "0.1",
@@ -23,6 +30,8 @@ const paymentRequest = {
   isPaid: false,
   paymentTx: null,
 }
+
+
 
 const sentToast = () => toast.info("Transaction sent!", {position: toast.POSITION.BOTTOM_CENTER });
 
@@ -49,6 +58,16 @@ class App extends Component {
   }
 
   init = async () => {
+
+    const parsed = queryString.parse(window.location.search);
+    const orderId = parseInt(parsed.orderId) || rand();
+
+    this.setState({
+      order: {
+        ...this.state.order,
+        id: orderId
+      }
+    })
     
     const web3 = this.state.web3;
     const exchange = new this.state.web3.eth.Contract(Exchange.abi, Exchange.address);
@@ -72,7 +91,7 @@ class App extends Component {
 
         const goValue = web3.utils.fromWei(event.returnValues[1], 'ether');
         const usdgValue = web3.utils.fromWei(event.returnValues[2], 'ether');
-        toast.success(`${goValue} Go swapped for ${usdgValue} USDG!`, {position: toast.POSITION.BOTTOM_CENTER });
+        toast.success(`${goValue} Go swapped for ${usdgValue} USDG!`, {position: toast.POSITION.BOTTOM_CENTER, toastId: event.blockHash });
       })
       .on('error', function(error){
         console.log('ERROR', error);
@@ -84,7 +103,7 @@ class App extends Component {
 
         const usdgValue = web3.utils.fromWei(event.returnValues[1], 'ether');
         const goValue = web3.utils.fromWei(event.returnValues[2], 'ether');
-        toast.success(`${usdgValue} USDG swapped for ${goValue} Go!`, {position: toast.POSITION.BOTTOM_CENTER });
+        toast.success(`${usdgValue} USDG swapped for ${goValue} Go!`, {position: toast.POSITION.BOTTOM_CENTER, toastId: event.blockHash });
       })
       .on('error', function(error){
         console.log('ERROR', error);
@@ -102,12 +121,21 @@ class App extends Component {
     }
 
     gateway.events.ProofOfPayment(gatewayOptions)
-      .on('data', function(event){
+      .on('data', async (event) => {
         console.log('ProofOfPayment', event);
 
         const seller = event.returnValues[1];
         const amount = web3.utils.fromWei(event.returnValues[3], 'ether');
-        toast.success(`You paid ${amount} Go!`, {position: toast.POSITION.BOTTOM_CENTER });
+        toast.success(`You paid ${amount}`, {position: toast.POSITION.BOTTOM_CENTER, toastId: event.blockHash});
+
+        let isThereProof = await this.checkOrderAlreadyPaid(this.state.order);
+        console.log('isThereProof', isThereProof, this.state.order);
+        this.setState({
+          order: {
+            ...this.state.order,
+            isPaid: isThereProof
+          }
+        })
       })
       .on('error', function(error){
         console.log('ERROR', error);
@@ -129,7 +157,7 @@ class App extends Component {
     /**
      * Check if order has been already payed
      */
-    const isPaid = await this.checkOrderAlreadyPaid(this.state.order);
+    const isPaid = await this.checkOrderAlreadyPaid({...this.state.order, id: orderId});
     console.log('isPaid', isPaid, this.state.order);
 
     if(isPaid) {
@@ -211,6 +239,7 @@ class App extends Component {
   }
 
   checkOrderAlreadyPaid = async (order) => {
+
     const payedWithGo = await this.state.contracts
       .gateway
       .methods
@@ -231,8 +260,6 @@ class App extends Component {
         GlobalVar.USDGtoken
       ).call()
 
-    console.log('payedWithGo', payedWithGo)
-    console.log('payedWithToken', payedWithToken)
     return payedWithGo || payedWithToken
   }
 
@@ -270,7 +297,7 @@ class App extends Component {
       .methods
       .payWithToken(
         order.seller,
-        order.id,
+        parseInt(order.id),
         this.state.web3.utils.toWei(order.usdValue, 'ether').toString(),
         GlobalVar.USDGtoken
       )
@@ -345,8 +372,9 @@ class App extends Component {
     const allowanceNeeded = web3.utils.toWei(allowanceUSDGtoGateway) < web3.utils.toWei(order.usdValue);
     return(
       <div>
+          <h1>Order id: {order.id}</h1>
           <Button color={"green"} size={"2"} onClick={()=>{ this.payWithGo(order); }}>
-            Pay order number: {paymentRequest.id} - {order.tokenValue} GO
+            Pay {order.tokenValue} GO
           </Button>
 
           { allowanceNeeded ?
@@ -355,13 +383,13 @@ class App extends Component {
             </Button>
           :
             <Button color={"green"} size={"2"} onClick={()=>{ this.payWithToken(order); }}>
-              Pay order number: {paymentRequest.id} - {order.usdValue} USDG
+              Pay {order.usdValue} USDG
             </Button>
           }
 
           { 
             allowanceNeeded ?
-              <h3>First Approve to pay with token, currently {this.state.allowanceUSDGtoGateway}</h3>
+              <h3>First Approve to pay with token, currently {this.state.allowanceUSDGtoGateway} 👆👆👆👆👆👆</h3>
             :
             <h3>Allowance {this.state.allowanceUSDGtoGateway}</h3>
           }
@@ -430,7 +458,7 @@ class App extends Component {
 
         { loading ? <h3>Loading...</h3> :
           <div>
-           { order.isPaid ? <h3>Order already paid</h3> : <div> {this.renderPayUI()}  {/*this.renderExchangeUI()*/} </div> }
+           { order.isPaid ? <h3>Order {order.id} paid</h3> : <div> {this.renderPayUI()}  {/*this.renderExchangeUI()*/} </div> }
           </div>
         }
 
