@@ -222,7 +222,7 @@ class App extends Component {
     this.state.contracts
       .exchange
       .methods
-      .ethToTokenSwap(this.state.web3.utils.toWei('1', 'ether'))
+      .ethToTokenSwap(this.state.web3.utils.toWei('1', 'ether'), this.state.account)
       .send({from:this.state.account, value: this.state.web3.utils.toWei('0.01', 'ether')})
         .on('transactionHash', function(hash){
           console.log('transactionHash', hash)
@@ -324,7 +324,7 @@ class App extends Component {
       .tokenToEthSwap(
         this.state.web3.utils.toWei('10', 'ether'), // Num token
         this.state.web3.utils.toWei('0.0000000000000001', 'ether'), // Min ether
-        '1546014502'
+        this.state.account
       )
       .send({from:this.state.account})
         .on('transactionHash', function(hash){
@@ -389,7 +389,7 @@ class App extends Component {
 
           { 
             allowanceNeeded ?
-              <h3>First Approve to pay with token, currently {this.state.allowanceUSDGtoGateway} 👆👆👆👆👆👆</h3>
+              <h3>First Approve to pay with token 👆👆👆👆👆👆</h3>
             :
             <h3>Allowance {this.state.allowanceUSDGtoGateway}</h3>
           }
@@ -458,7 +458,7 @@ class App extends Component {
 
         { loading ? <h3>Loading...</h3> :
           <div>
-           { order.isPaid ? <h3>Order {order.id} paid</h3> : <div> {this.renderPayUI()}  {/*this.renderExchangeUI()*/} </div> }
+           { order.isPaid ? <h3>Order {order.id} paid</h3> : <div> {this.renderPayUI()}  {this.renderExchangeUI()} </div> }
           </div>
         }
 
