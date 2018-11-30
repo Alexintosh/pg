@@ -28,6 +28,8 @@ const paymentRequest = {
   token: GlobalVar.GOToken,
   isPaid: false,
   paymentTx: null,
+  shopName: "Crypto Swag",
+  itemName: "Mastering Bitcoin"
 }
 
 
@@ -60,13 +62,24 @@ class App extends Component {
 
   init = async () => {
 
-    const parsed = queryString.parse(window.location.search);
-    const orderId = parseInt(parsed.orderId) || rand();
+    const params = queryString.parse(window.location.search);
+    const orderId = parseInt(params.orderId) || rand();
+
+    console.log("order", {
+      ...this.state.order,
+      id: orderId,
+      shopName: params.shopname || false,
+      itemName: params.itemname || false,
+      priceGo: params.pricego || false,
+    })
 
     this.setState({
       order: {
         ...this.state.order,
-        id: orderId
+        id: orderId,
+        shopName: params.shopname || false,
+        itemName: params.itemname || false,
+        priceGo: params.pricego || false,
       }
     })
     
