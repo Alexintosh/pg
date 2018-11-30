@@ -1,0 +1,23 @@
+{
+    "name": "unstoppable-payment-gateway",
+    "version": "0.0.1",
+    "private": true,
+    "dependencies": {
+        "clevis": "0.0.61",
+        "dapparatus": "^1.0.20",
+        "eth-url-parser": "^1.0.2",
+        "ethers": "^4.0.15",
+        "mocha": "^5.2.0",
+        "react": "^16.4.2",
+        "react-dom": "^16.4.2",
+        "react-scripts": "1.1.4",
+        "react-toastify": "^4.4.3",
+        "s3": "^4.4.0"
+    },
+    "scripts": {
+        "start": "react-scripts start",
+        "build": "react-scripts build",
+        "test": "react-scripts test --env=jsdom",
+        "eject": "react-scripts eject"
+    }
+}
