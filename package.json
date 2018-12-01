@@ -8,7 +8,6 @@
         "dapparatus": "^1.0.20",
         "eth-url-parser": "^1.0.2",
         "ethers": "^4.0.15",
-        "query-string": "^6.2.0",
         "react": "^16.4.2",
         "react-dom": "^16.4.2",
         "react-scripts": "1.1.4",

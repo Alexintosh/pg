@@ -1,10 +1,16 @@
 
+html {
+  background-color: #F7F8F9;  
+}
+
 body {
   font-family: sans-serif;
-  color:#888888;
-  font-size:28px;
+  color: #6b7c93;
+  font-size:18px;
   font-weight:bold;
-  background-color: #fff;
+  background-color: #F7F8F9;
+  font-family: "Helvetica Neue", Helvetica, sans-serif;
+  font-weight: 500;
 }
 a {
   color:#aaaaaa;

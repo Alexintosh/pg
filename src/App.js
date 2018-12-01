@@ -8,7 +8,7 @@ import Gateway from './contracts/UnstoppablePaymentGateway';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { parse, build } from 'eth-url-parser';
-import queryString from 'query-string';
+import qs from 'qs';
 import { Container, Column, Panel, Button, PanelBlock, PanelHeading, Icon, PanelTab, Checkbox, PanelTabs, PanelIcon, Notification, Tag,
 Media, MediaLeft, Image, Content, MediaContent } from 'bloomer';
 
@@ -64,7 +64,7 @@ class App extends Component {
 
   init = async () => {
 
-    const params = queryString.parse(window.location.search);
+    const params = qs.parse(window.location.search.slice(1));
     const orderId = parseInt(params.orderId) || rand();
 
     this.setState({
@@ -455,11 +455,21 @@ class App extends Component {
       <div className="App">
       <Container style={{margin: '20px auto'}}>
       <ToastContainer />
-      <div isSize="12" isCentered className="columns is-centered">
+      <div className="columns is-centered">
       <Column isSize={{mobile: 12, desktop:"1/3"}} isOffset={1} className="has-text-centered">
         <Panel>
           <PanelHeading>Unipay 🦄</PanelHeading>
-          { loading ? <h3>Loading...</h3> : this.renderPayUI() }
+          { loading ? <h3>Loading...</h3> : 
+            <div>
+              { order.isPaid ? 
+              <PanelBlock>
+                <h1> <Icon className="fa fa-check-circle"/> Order paid.</h1>
+              </PanelBlock>
+              : this.renderPayUI()
+              }
+            
+            </div>
+          }
           <PanelBlock>            
             <Media>
                 <MediaLeft>
@@ -476,16 +486,22 @@ class App extends Component {
                 </MediaContent>
             </Media>
           </PanelBlock>
-          <PanelBlock >
-            <Column isSize={12} className="has-text-centered">
-              { order.qrCode ? <img src={order.qrCode} /> : null}
-            </Column>
-          </PanelBlock>
-          <PanelBlock >
-            <Column isSize={12} className="has-text-centered">
-              <Button isColor='info' isSize="large">open in wallet</Button>
-            </Column>
-          </PanelBlock>
+
+          { order.isPaid ? null :
+            <div>
+              <PanelBlock >
+                <Column isSize={12} className="has-text-centered">
+                  { order.qrCode ? <img src={order.qrCode} /> : null}
+                </Column>
+              </PanelBlock>
+              <PanelBlock >
+                <Column isSize={12} className="has-text-centered">
+                  <Button isColor='info' isSize="large">open in wallet</Button>
+                </Column>
+              </PanelBlock>
+            </div>
+          }
+          
       </Panel>
       </Column>
       </div>        
