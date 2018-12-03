@@ -6,7 +6,10 @@ Project for the Go Chain Hackathon
 Idea Name: UnstoppablePaymentGateway
 Idea Summary:  Blockchain software solution which enables Merchants to accept payments in GO and ERC20 tokens without being exposed to the volatility of the specific currency used during the transaction, in a completely decentralized matter.
 
-[Hosted](https://unipay.now.sh/?shopname=Go%20Coffebar&usd=60&itemname=Espresso%20x8&pricego=1578.95&img=http://storage.googleapis.com/main-course-images/Test%20folderName/medium_e9/3f1a20f56c11e8805e87df60985b4c.png)
+- [Hosted Demo](https://unipay.now.sh/?shopname=Go%20Coffebar&usd=60&itemname=Espresso%20x8&pricego=1578.95&img=http://storage.googleapis.com/main-course-images/Test%20folderName/medium_e9/3f1a20f56c11e8805e87df60985b4c.png)
+- [Restaurant POS used in the demo](https://github.com/Lambda-School-Labs/CS10-restaurant-pos)
+- Exchange contract inspired by the work of [Uniswap](https://uniswap.io/)
+
 
 ### Motivations
 
